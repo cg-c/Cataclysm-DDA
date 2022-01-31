@@ -2918,6 +2918,7 @@ tab_direction set_scenario( avatar &u, pool_type pool )
     catacurses::window w;
     catacurses::window w_description;
     catacurses::window w_sorting;
+    catacurses::window w_genderswap;
     catacurses::window w_profession;
     catacurses::window w_location;
     catacurses::window w_vehicle;
@@ -2929,17 +2930,21 @@ tab_direction set_scenario( avatar &u, pool_type pool )
         w_description = catacurses::newwin( 4, TERMX - 2, point( 1, TERMY - 5 ) );
         const int second_column_w = TERMX / 2 - 1;
         point origin = point( second_column_w + 1, 5 );
-        const int w_sorting_h = 2;
+        const int w_sorting_h = 1;
+        const int w_genderswap_h = 2;
         const int w_profession_h = 4;
         const int w_location_h = 3;
         const int w_vehicle_h = 3;
         const int w_initial_date_h = 6;
         const int w_flags_h = clamp<int>( 0,
                                           iContentHeight -
-                                          ( w_sorting_h + w_profession_h + w_location_h + w_vehicle_h + w_initial_date_h ),
+                                          ( w_sorting_h + w_genderswap_h + w_profession_h + w_location_h + w_vehicle_h + w_initial_date_h ),
                                           iContentHeight );
         w_sorting = catacurses::newwin( w_sorting_h, second_column_w, origin );
         origin += point( 0, w_sorting_h );
+
+        w_genderswap = catacurses::newwin( w_genderswap_h, second_column_w, origin );
+        origin += point( 0, w_genderswap_h );
 
         w_profession = catacurses::newwin( w_profession_h, second_column_w, origin );
         origin += point( 0, w_profession_h );
@@ -2966,6 +2971,7 @@ tab_direction set_scenario( avatar &u, pool_type pool )
     ctxt.register_action( "HOME" );
     ctxt.register_action( "END" );
     ctxt.register_action( "CONFIRM" );
+    ctxt.register_action( "CHANGE_GENDER" );
     ctxt.register_action( "PREV_TAB" );
     ctxt.register_action( "NEXT_TAB" );
     ctxt.register_action( "SORT" );
@@ -3091,6 +3097,7 @@ tab_direction set_scenario( avatar &u, pool_type pool )
         }
 
         werase( w_sorting );
+        werase( w_genderswap );
         werase( w_profession );
         werase( w_location );
         werase( w_vehicle );
@@ -3099,6 +3106,18 @@ tab_direction set_scenario( avatar &u, pool_type pool )
 
         if( cur_id_is_valid ) {
             draw_sorting_indicator( w_sorting, ctxt, scenario_sorter );
+            draw_sorting_indicator( w_sorting, ctxt, profession_sorter );
+
+            const char *g_switch_msg = u.male ?
+                                       //~ Gender switch message. 1s - change key name, 2s - profession name.
+                                       _( "Press <color_light_green>%1$s</color> to switch "
+                                          "to <color_magenta>%2$s</color> (<color_pink>female</color>)." ) :
+                                       //~ Gender switch message. 1s - change key name, 2s - profession name.
+                                       _( "Press <color_light_green>%1$s</color> to switch "
+                                          "to <color_magenta>%2$s</color> (<color_light_cyan>male</color>)." );
+            fold_and_print( w_genderswap, point_zero, ( TERMX / 2 ), c_light_gray, g_switch_msg,
+                            ctxt.get_desc( "CHANGE_GENDER" ),
+                            sorted_scens[cur_id]->gender_appropriate_name( !u.male ) );
 
             mvwprintz( w_profession, point_zero, COL_HEADER, _( "Professions:" ) );
             wprintz( w_profession, c_light_gray,
@@ -3191,6 +3210,7 @@ tab_direction set_scenario( avatar &u, pool_type pool )
 
         wnoutrefresh( w );
         wnoutrefresh( w_description );
+        wnoutrefresh( w_genderswap );
         wnoutrefresh( w_sorting );
         wnoutrefresh( w_profession );
         wnoutrefresh( w_location );
@@ -3282,6 +3302,10 @@ tab_direction set_scenario( avatar &u, pool_type pool )
                 continue;
             }
             reset_scenario( u, sorted_scens[cur_id] );
+        } else if( action == "CHANGE_GENDER" ) {
+            u.male = !u.male;
+            scenario_sorter.male = u.male;
+            profession_sorter.male = u.male;
         } else if( action == "PREV_TAB" ) {
             retval = tab_direction::BACKWARD;
         } else if( action == "NEXT_TAB" ) {
